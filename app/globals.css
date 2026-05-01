@@ -3,25 +3,382 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f7faf9;
+  --foreground: #17201b;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+
+  body {
+    @apply min-h-screen antialiased;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8;
+  }
+
+  .panel {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-danger {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-rose-700 px-4 text-sm font-semibold text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .field-label {
+    @apply text-sm font-semibold text-slate-800;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .markdown-body {
+    @apply prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-headings:font-bold prose-a:text-emerald-700 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200 prose-pre:bg-slate-950 prose-img:rounded-lg;
+  }
+
+  .markdown-body .shiki {
+    @apply overflow-x-auto rounded-lg p-4 text-sm;
+  }
+
+  .markdown-body .youtube-embed {
+    @apply my-6 aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-950;
+  }
+
+  .markdown-body .youtube-embed iframe {
+    @apply h-full w-full;
+  }
+
+  .tiptap-editor.ProseMirror {
+    @apply min-h-[620px] outline-none;
+  }
+
+  .tiptap-editor.ProseMirror p.is-editor-empty:first-child::before {
+    @apply pointer-events-none float-left h-0 text-slate-400 content-[attr(data-placeholder)];
+  }
+
+  .tiptap-editor h1 {
+    @apply mb-4 mt-2 text-3xl font-bold text-slate-950;
+  }
+
+  .tiptap-editor h2 {
+    @apply mb-3 mt-6 text-2xl font-bold text-slate-950;
+  }
+
+  .tiptap-editor p {
+    @apply my-3 text-slate-700;
+  }
+
+  .tiptap-editor ul {
+    @apply my-3 list-disc pl-6;
+  }
+
+  .tiptap-editor pre {
+    @apply my-4 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100;
+  }
+
+  .tiptap-editor code {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-sm text-slate-900;
+  }
+
+  .tiptap-editor pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+
+  .tiptap-editor img {
+    @apply my-4 max-h-96 rounded-lg border border-slate-200 object-contain;
+  }
+}
+
+.prose {
+  font-size: 0.95rem;
+}
+
+.prose h1 {
+  font-size: 1.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose h2 {
+  font-size: 1.4rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose h3 {
+  font-size: 1.15rem;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.prose h4 {
+  font-size: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.prose p {
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+  line-height: 1.65;
+}
+
+.prose ul,
+.prose ol {
+  margin-top: 0.4rem;
+  margin-bottom: 0.6rem;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #8b5cf6;
+  color: #27272a;
+  font-style: normal;
+  margin: 1rem 0;
+  padding: 0.35rem 0 0.35rem 1.1rem;
+  quotes: none;
+}
+
+.markdown-body blockquote p {
+  font-style: normal;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body blockquote p:first-of-type::before,
+.markdown-body blockquote p:last-of-type::after {
+  content: none;
+}
+
+.prose hr {
+  margin-top: 0.9rem;
+  margin-bottom: 0.9rem;
+  border-color: #e2e8f0;
+}
+
+.prose hr + h1,
+.prose hr + h2,
+.prose hr + h3,
+.prose hr + h4 {
+  margin-top: 0.75rem;
+}
+
+.prose .callout + hr {
+  margin-top: 0.75rem;
+}
+
+.callout {
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+
+.callout-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.callout-content {
+  font-size: 0.92rem;
+}
+
+.callout-content > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body .callout-content p {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+  line-height: 1.55;
+}
+
+.markdown-body .callout-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body .callout-content ul,
+.markdown-body .callout-content ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.25rem;
+}
+
+.markdown-body .callout-content li {
+  margin-top: 0.12rem;
+  margin-bottom: 0.12rem;
+  padding-left: 0.15rem;
+}
+
+.markdown-body .callout-content li > p {
+  margin: 0;
+}
+
+.callout-info {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+}
+
+.callout-info .callout-title {
+  color: #1d4ed8;
+}
+
+.callout-warning {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+}
+
+.callout-warning .callout-title {
+  color: #b45309;
+}
+
+.callout-danger {
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+}
+
+.callout-danger .callout-title {
+  color: #b91c1c;
+}
+
+.callout-success {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+}
+
+.callout-success .callout-title {
+  color: #15803d;
+}
+
+.callout-tip {
+  background: #f0fdfa;
+  border-left: 4px solid #14b8a6;
+}
+
+.callout-tip .callout-title {
+  color: #0f766e;
+}
+
+.callout-note {
+  background: #f5f3ff;
+  border-left: 4px solid #8b5cf6;
+}
+
+.callout-note .callout-title {
+  color: #6d28d9;
+}
+
+.callout-example {
+  background: #fff7ed;
+  border-left: 4px solid #f97316;
+}
+
+.callout-example .callout-title {
+  color: #c2410c;
+}
+
+.callout-question {
+  background: #faf5ff;
+  border-left: 4px solid #a855f7;
+}
+
+.callout-question .callout-title {
+  color: #7e22ce;
+}
+
+.callout-exercise {
+  background: #fff7ed;
+  border-left: 4px solid #f97316;
+}
+
+.callout-exercise .callout-title {
+  color: #c2410c;
+}
+
+.callout-solution {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+}
+
+.callout-solution .callout-title {
+  align-items: center;
+  color: #15803d;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.callout-solution .callout-title::after {
+  content: "›";
+  font-size: 1.15em;
+  line-height: 1;
+}
+
+.callout-solution .callout-content {
+  display: none;
+}
+
+.callout-solution.is-open .callout-title::after {
+  content: "∨";
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.prose th {
+  background: #f1f5f9;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.prose td {
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.prose tr:nth-child(even) {
+  background: #f8fafc;
 }
