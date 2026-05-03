@@ -11,12 +11,43 @@ const subjectOrder = [
   "fizyka",
   "khimiia",
   "biolohiia",
-  "heohrafiia",
+  "informatyka",
+  "kompiuterni-nauky",
+  "movy-prohramuvannia",
+  "informatsiini-tekhnolohii",
   "inozemni-movy",
   "anhliiska-mova",
   "istoriia",
   "istoriia-ukrainy",
+  "heohrafiia",
+  "inzheneriia",
+  "ekonomika",
+  "filosofiia",
+  "antropolohiia",
 ] as const;
+
+function getSubjectDisplay(subject: Subject) {
+  if (subject.slug === "anhliiska-mova") {
+    return {
+      ...subject,
+      title: "Іноземні мови",
+      description:
+        "Англійська, німецька, французька, іспанська та італійська від початку до впевненого рівня.",
+      icon: "emoji:🗣️",
+    };
+  }
+
+  if (subject.slug === "istoriia-ukrainy") {
+    return {
+      ...subject,
+      title: "Історія",
+      description: "Світова та українська історія від давніх цивілізацій до сучасності.",
+      icon: "emoji:🏛️",
+    };
+  }
+
+  return subject;
+}
 
 function sortSubjects(subjects: Subject[]) {
   return [...subjects].sort((first, second) => {
@@ -99,11 +130,14 @@ export default async function HomePage() {
 
         {subjects.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {subjects.map((subject) => (
+            {subjects.map((rawSubject) => {
+              const subject = getSubjectDisplay(rawSubject);
+
+              return (
               <Link
                 className="panel group flex min-h-48 flex-col justify-between p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
-                href={`/subjects/${subject.slug}`}
-                key={subject.id}
+                href={`/subjects/${rawSubject.slug}`}
+                key={rawSubject.id}
               >
                 <div className="space-y-4">
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
@@ -123,7 +157,8 @@ export default async function HomePage() {
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </span>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="panel p-6 text-center text-sm text-slate-600">

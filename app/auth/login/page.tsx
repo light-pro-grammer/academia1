@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { loginAction } from "@/app/auth/actions";
+import { loginAction, signInWithGoogleAction } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 type LoginPageProps = {
@@ -21,8 +21,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             Поверніться до навчання
           </h1>
           <p className="text-sm text-slate-600">
-            Увійдіть, щоб створювати уроки, бачити прогрес і керувати своїми
-            матеріалами.
+            Увійдіть, щоб бачити прогрес і продовжувати навчання.
           </p>
         </div>
 
@@ -67,6 +66,22 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             />
           </div>
           <SubmitButton label="Увійти" pendingLabel="Входимо..." />
+        </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            або
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <form action={signInWithGoogleAction}>
+          <SubmitButton
+            label="Увійти через Google"
+            pendingLabel="Переходимо до Google..."
+            variant="secondary"
+          />
         </form>
 
         <p className="mt-5 text-center text-sm text-slate-600">

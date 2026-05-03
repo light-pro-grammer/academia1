@@ -1,43 +1,24 @@
 import Link from "next/link";
-import { Check, Clock, FileText, GraduationCap, ListChecks, Pencil, Trash2, UserRound } from "lucide-react";
+import { FileText, ListChecks, Pencil, Trash2 } from "lucide-react";
 import {
-  approveLessonAction,
   createCourseAction,
-  createExamAction,
   deleteCourseAction,
-  deleteExamAction,
-  deleteExamQuestionAction,
-  rejectLessonAction,
+  deleteLessonAction,
   updateCourseAction,
-  updateExamAction,
 } from "@/app/admin/actions";
-import { LessonOrderingList, type LessonOrderGroup } from "@/components/admin/lesson-ordering-list";
-import { QuestionForm } from "@/components/admin/question-form";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { requireAdmin } from "@/lib/auth";
-import type {
-  Exam,
-  ExamQuestion,
-  Lesson,
-  Profile,
-  Course,
-  Subject,
-} from "@/lib/types";
+import type { Lesson, Course, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 type AdminPageProps = {
   searchParams: {
+    approvedPage?: string;
     error?: string;
     message?: string;
     tab?: string;
   };
-};
-
-type PendingLesson = Lesson & {
-  subjects?: Pick<Subject, "title" | "slug"> | null;
-  profiles?: Pick<Profile, "username"> | null;
-  courses?: Pick<Course, "title" | "slug"> | null;
 };
 
 type LessonOption = Pick<
@@ -50,10 +31,6 @@ type LessonOption = Pick<
         subjects?: Pick<Subject, "title" | "slug"> | null;
       })
     | null;
-};
-
-type ExamWithSubject = Exam & {
-  subjects?: Pick<Subject, "title" | "slug"> | null;
 };
 
 type CourseWithSubject = Course & {
@@ -93,98 +70,108 @@ function DeleteButton({ label = "Видалити" }: { label?: string }) {
   );
 }
 
+function parsePositivePage(value?: string) {
+  const page = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(page) && page > 0 ? page : 1;
+}
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+}: {
+  currentPage: number;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const pageHref = (page: number) => `/admin?tab=lessons&approvedPage=${page}`;
+  const previousPage = Math.max(1, currentPage - 1);
+  const nextPage = Math.min(totalPages, currentPage + 1);
+
+  return (
+    <nav
+      aria-label="Пагінація уроків"
+      className="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm font-semibold text-slate-600">
+        Сторінка {currentPage} з {totalPages}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          aria-disabled={currentPage <= 1}
+          className={`btn-secondary h-10 px-3 ${
+            currentPage <= 1 ? "pointer-events-none opacity-50" : ""
+          }`}
+          href={pageHref(previousPage)}
+        >
+          Назад
+        </Link>
+        <Link
+          aria-disabled={currentPage >= totalPages}
+          className={`btn-secondary h-10 px-3 ${
+            currentPage >= totalPages ? "pointer-events-none opacity-50" : ""
+          }`}
+          href={pageHref(nextPage)}
+        >
+          Далі
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const activeTab = ["lessons", "courses", "exams"].includes(searchParams.tab ?? "")
-    ? searchParams.tab!
-    : "lessons";
+  const activeTab = searchParams.tab === "courses" ? "courses" : "lessons";
+  const approvedPageSize = 25;
+  const approvedPage = parsePositivePage(searchParams.approvedPage);
+  const approvedFrom = (approvedPage - 1) * approvedPageSize;
+  const approvedTo = approvedFrom + approvedPageSize - 1;
   const { supabase } = await requireAdmin();
 
-  const [
-    { data: pendingLessonsData, error: pendingError },
-    { data: approvedLessonsData },
-    { data: subjectsData },
-    { data: coursesData },
-    { data: examsData },
-    { data: examQuestionsData },
-  ] = await Promise.all([
-    supabase
+  let lessons: LessonOption[] = [];
+  let lessonCount = 0;
+  let lessonsError: { message: string } | null = null;
+  let subjects: Subject[] = [];
+  let courses: CourseWithSubject[] = [];
+
+  if (activeTab === "lessons") {
+    const { data, error, count } = await supabase
       .from("lessons")
-      .select("*, subjects(title, slug), profiles(username), courses(title, slug)")
-      .eq("status", "pending")
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("lessons")
-      .select("id, title, slug, subject_id, course_id, order_index, courses(id, title, slug, subjects(title, slug)), subjects(title)")
+      .select(
+        "id, title, slug, subject_id, course_id, order_index, courses(id, title, slug, subjects(title, slug)), subjects(title)",
+        { count: "exact" },
+      )
       .eq("status", "approved")
       .order("course_id", { ascending: true, nullsFirst: false })
       .order("order_index", { ascending: true })
-      .order("created_at", { ascending: true }),
-    supabase.from("subjects").select("*").order("title", { ascending: true }),
-    supabase
-      .from("courses")
-      .select("*, subjects(title, slug), lessons(id)")
-      .order("order_index", { ascending: true }),
-    supabase
-      .from("exams")
-      .select("*, subjects(title, slug)")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("exam_questions")
-      .select("*")
-      .order("order_index", { ascending: true }),
-  ]);
+      .order("created_at", { ascending: true })
+      .range(approvedFrom, approvedTo);
 
-  const pendingLessons = (pendingLessonsData ?? []) as unknown as PendingLesson[];
-  const approvedLessons = (approvedLessonsData ?? []) as unknown as LessonOption[];
-  const subjects = (subjectsData ?? []) as Subject[];
-  const courses = (coursesData ?? []) as unknown as CourseWithSubject[];
-  const exams = (examsData ?? []) as unknown as ExamWithSubject[];
-  const examQuestions = (examQuestionsData ?? []) as ExamQuestion[];
+    lessons = (data ?? []) as unknown as LessonOption[];
+    lessonCount = count ?? lessons.length;
+    lessonsError = error;
+  }
+
+  if (activeTab === "courses") {
+    const [subjectsResult, coursesResult] = await Promise.all([
+      supabase.from("subjects").select("*").order("title", { ascending: true }),
+      supabase
+        .from("courses")
+        .select("*, subjects(title, slug), lessons(id)")
+        .order("order_index", { ascending: true }),
+    ]);
+
+    subjects = (subjectsResult.data ?? []) as Subject[];
+    courses = (coursesResult.data ?? []) as unknown as CourseWithSubject[];
+  }
+
   const coursesBySubject = subjects.map((subject) => ({
     subject,
     courses: courses.filter((course) => course.subject_id === subject.id),
   }));
-  const approvedLessonGroups = courses
-    .map<LessonOrderGroup>((course) => ({
-      courseId: course.id,
-      courseTitle: course.title,
-      subjectTitle: course.subjects?.title ?? "Предмет",
-      lessons: approvedLessons
-        .filter((lesson) => lesson.course_id === course.id)
-        .sort(
-          (first, second) =>
-            first.order_index - second.order_index ||
-            first.title.localeCompare(second.title, "uk"),
-        )
-        .map((lesson) => ({
-          id: lesson.id,
-          title: lesson.title,
-          slug: lesson.slug,
-          order_index: lesson.order_index,
-        })),
-    }))
-    .filter((group) => group.lessons.length > 0);
-  const lessonsWithoutCourse = approvedLessons
-    .filter((lesson) => !lesson.course_id)
-    .sort(
-      (first, second) =>
-        first.order_index - second.order_index ||
-        first.title.localeCompare(second.title, "uk"),
-    );
-
-  if (lessonsWithoutCourse.length > 0) {
-    approvedLessonGroups.push({
-      courseId: null,
-      courseTitle: "Без курсу",
-      subjectTitle: "Не прив'язано до курсу",
-      lessons: lessonsWithoutCourse.map((lesson) => ({
-        id: lesson.id,
-        title: lesson.title,
-        slug: lesson.slug,
-        order_index: lesson.order_index,
-      })),
-    });
-  }
+  const totalPages = Math.max(1, Math.ceil(lessonCount / approvedPageSize));
 
   return (
     <section className="page-shell space-y-6">
@@ -196,14 +183,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           Панель керування платформою
         </h1>
         <p className="text-sm text-slate-600">
-          Модеруйте уроки, керуйте курсами та налаштовуйте іспити.
+          Керуйте опублікованими уроками та курсами.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2 rounded-lg bg-slate-100 p-2">
         <TabLink active={activeTab === "lessons"} href="/admin?tab=lessons" label="Уроки" />
         <TabLink active={activeTab === "courses"} href="/admin?tab=courses" label="Курси" />
-        <TabLink active={activeTab === "exams"} href="/admin?tab=exams" label="Іспити" />
       </div>
 
       {searchParams.message ? (
@@ -219,121 +205,78 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ) : null}
 
       {activeTab === "lessons" ? (
-        <section className="space-y-4">
-          <div className="panel p-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-xl font-bold text-slate-950">
-                Очікують перевірки
-              </h2>
-              <span className="status-pill bg-amber-100 text-amber-800">
-                {pendingLessons.length} на модерації
-              </span>
-            </div>
+        <section className="panel p-5">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-bold text-slate-950">
+              Опубліковані уроки
+            </h2>
+            <span className="status-pill bg-emerald-100 text-emerald-800">
+              {lessonCount} опубліковано
+            </span>
           </div>
 
-          {pendingError ? (
+          {lessonsError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              Не вдалося завантажити уроки: {pendingError.message}
+              Не вдалося завантажити уроки: {lessonsError.message}
             </div>
           ) : null}
 
-          {pendingLessons.length > 0 ? (
-            <div className="space-y-4">
-              {pendingLessons.map((lesson) => (
-                <article className="panel p-5" key={lesson.id}>
-                  <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1">
-                          <FileText className="h-3.5 w-3.5" />
-                          {lesson.subjects?.title ?? "Предмет"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <ListChecks className="h-3.5 w-3.5" />
-                          {lesson.courses?.title ?? "Без курсу"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <UserRound className="h-3.5 w-3.5" />
-                          {lesson.profiles?.username ?? "Автор"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {new Intl.DateTimeFormat("uk-UA").format(
-                            new Date(lesson.created_at),
-                          )}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-950">
+          {lessons.length > 0 ? (
+            <>
+              <div className="space-y-3">
+                {lessons.map((lesson) => (
+                  <article
+                    className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                    key={lesson.id}
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                            {lesson.subjects?.title ?? "Предмет"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
+                            {lesson.courses?.title ?? "Без курсу"}
+                          </span>
+                          <span>Порядок: {lesson.order_index}</span>
+                        </div>
+                        <Link
+                          className="text-lg font-bold text-slate-950 transition hover:text-emerald-700"
+                          href={`/lessons/${lesson.slug}`}
+                        >
                           {lesson.title}
-                        </h3>
-                        <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-600">
-                          {lesson.content.slice(0, 600)}
-                        </p>
+                        </Link>
+                      </div>
+
+                      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                        <Link
+                          className="btn-secondary h-10 px-3"
+                          href={`/lessons/${lesson.slug}/edit`}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                          Редагувати
+                        </Link>
+                        <form action={deleteLessonAction}>
+                          <input name="lesson_id" type="hidden" value={lesson.id} />
+                          <button className="btn-danger h-10 w-full px-3 sm:w-auto" type="submit">
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            Видалити
+                          </button>
+                        </form>
                       </div>
                     </div>
-
-                    <div className="space-y-3">
-                      <Link className="btn-secondary w-full" href={`/lessons/${lesson.slug}/edit`}>
-                        <Pencil className="h-4 w-4" aria-hidden="true" />
-                        Редагувати
-                      </Link>
-
-                      <form action={approveLessonAction}>
-                        <input name="lesson_id" type="hidden" value={lesson.id} />
-                        <button className="btn-primary w-full" type="submit">
-                          <Check className="h-4 w-4" aria-hidden="true" />
-                          Затвердити
-                        </button>
-                      </form>
-
-                      <form action={rejectLessonAction} className="space-y-2">
-                        <input name="lesson_id" type="hidden" value={lesson.id} />
-                        <label className="field-label" htmlFor={`reason-${lesson.id}`}>
-                          Причина відхилення
-                        </label>
-                        <textarea
-                          className="field-input min-h-24 resize-y"
-                          id={`reason-${lesson.id}`}
-                          name="rejection_reason"
-                          placeholder="Що потрібно виправити?"
-                          required
-                        />
-                        <SubmitButton
-                          label="Відхилити"
-                          pendingLabel="Відхиляємо..."
-                          variant="danger"
-                        />
-                      </form>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+              <PaginationControls currentPage={approvedPage} totalPages={totalPages} />
+            </>
           ) : (
-            <div className="panel p-6 text-center text-sm text-slate-600">
-              Немає уроків, що очікують перевірки.
-            </div>
+            <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-600">
+              Опублікованих уроків поки немає.
+            </p>
           )}
-
-          <div className="panel p-5">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-xl font-bold text-slate-950">
-                Затверджені уроки
-              </h2>
-              <span className="status-pill bg-emerald-100 text-emerald-800">
-                {approvedLessons.length} опубліковано
-              </span>
-            </div>
-
-            {approvedLessons.length > 0 ? (
-              <LessonOrderingList groups={approvedLessonGroups} />
-            ) : (
-              <p className="text-sm text-slate-600">
-                Затверджених уроків поки немає.
-              </p>
-            )}
-          </div>
         </section>
       ) : null}
 
@@ -460,197 +403,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               </div>
             )}
           </div>
-        </section>
-      ) : null}
-
-      {activeTab === "exams" ? (
-        <section className="space-y-6">
-          <div className="panel p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <GraduationCap className="h-5 w-5 text-emerald-700" aria-hidden="true" />
-              <h2 className="text-xl font-bold text-slate-950">Новий іспит</h2>
-            </div>
-            <form action={createExamAction} className="grid gap-4 lg:grid-cols-4">
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="subject_id">
-                  Предмет
-                </label>
-                <select className="field-input" id="subject_id" name="subject_id" required>
-                  <option value="">Оберіть предмет</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="exam-title">
-                  Назва
-                </label>
-                <input className="field-input" id="exam-title" name="title" required />
-              </div>
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="pass_score">
-                  Мінімальний бал, %
-                </label>
-                <input
-                  className="field-input"
-                  defaultValue={70}
-                  id="pass_score"
-                  max={100}
-                  min={0}
-                  name="pass_score"
-                  required
-                  type="number"
-                />
-              </div>
-              <div className="space-y-2 lg:col-span-4">
-                <label className="field-label" htmlFor="description">
-                  Опис
-                </label>
-                <textarea
-                  className="field-input min-h-20 resize-y"
-                  id="description"
-                  name="description"
-                />
-              </div>
-              <div className="lg:col-span-4">
-                <SubmitButton label="Створити іспит" pendingLabel="Створюємо..." />
-              </div>
-            </form>
-          </div>
-
-          {exams.length > 0 ? (
-            exams.map((exam) => {
-              const questionsForExam = examQuestions.filter(
-                (question) => question.exam_id === exam.id,
-              );
-
-              return (
-                <article className="panel p-5" key={exam.id}>
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                        {exam.subjects?.title ?? "Предмет"}
-                      </p>
-                      <h3 className="mt-1 text-xl font-bold text-slate-950">
-                        {exam.title}
-                      </h3>
-                    </div>
-                    <span className="status-pill bg-emerald-100 text-emerald-800">
-                      Мінімум {exam.pass_score}%
-                    </span>
-                  </div>
-
-                  <form action={updateExamAction} className="grid gap-4 lg:grid-cols-4">
-                    <input name="exam_id" type="hidden" value={exam.id} />
-                    <div className="space-y-2">
-                      <label className="field-label" htmlFor={`subject-${exam.id}`}>
-                        Предмет
-                      </label>
-                      <select
-                        className="field-input"
-                        defaultValue={exam.subject_id}
-                        id={`subject-${exam.id}`}
-                        name="subject_id"
-                        required
-                      >
-                        {subjects.map((subject) => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="field-label" htmlFor={`title-${exam.id}`}>
-                        Назва
-                      </label>
-                      <input
-                        className="field-input"
-                        defaultValue={exam.title}
-                        id={`title-${exam.id}`}
-                        name="title"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="field-label" htmlFor={`pass-${exam.id}`}>
-                        Мінімальний бал
-                      </label>
-                      <input
-                        className="field-input"
-                        defaultValue={exam.pass_score}
-                        id={`pass-${exam.id}`}
-                        max={100}
-                        min={0}
-                        name="pass_score"
-                        required
-                        type="number"
-                      />
-                    </div>
-                    <div className="space-y-2 lg:col-span-4">
-                      <label className="field-label" htmlFor={`description-${exam.id}`}>
-                        Опис
-                      </label>
-                      <textarea
-                        className="field-input min-h-20 resize-y"
-                        defaultValue={exam.description ?? ""}
-                        id={`description-${exam.id}`}
-                        name="description"
-                      />
-                    </div>
-                    <div className="lg:col-span-4">
-                      <SubmitButton label="Оновити іспит" pendingLabel="Оновлюємо..." />
-                    </div>
-                  </form>
-
-                  <form action={deleteExamAction} className="mt-3">
-                    <input name="exam_id" type="hidden" value={exam.id} />
-                    <DeleteButton label="Видалити іспит" />
-                  </form>
-
-                  <div className="mt-6 grid gap-5 lg:grid-cols-[380px_1fr]">
-                    <div className="rounded-lg border border-slate-200 p-4">
-                      <h4 className="mb-4 font-bold text-slate-950">
-                        Додати питання
-                      </h4>
-                      <QuestionForm examId={exam.id} kind="exam-question" />
-                    </div>
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-slate-950">
-                        Питання іспиту ({questionsForExam.length})
-                      </h4>
-                      {questionsForExam.length > 0 ? (
-                        questionsForExam.map((question) => (
-                          <div className="rounded-lg border border-slate-200 p-4" key={question.id}>
-                            <QuestionForm
-                              examId={exam.id}
-                              kind="exam-question"
-                              question={question}
-                            />
-                            <form action={deleteExamQuestionAction} className="mt-3">
-                              <input name="question_id" type="hidden" value={question.id} />
-                              <DeleteButton label="Видалити питання" />
-                            </form>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
-                          Питання ще не додані.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
-            <div className="panel p-6 text-sm text-slate-600">
-              Іспити ще не створені.
-            </div>
-          )}
         </section>
       ) : null}
     </section>

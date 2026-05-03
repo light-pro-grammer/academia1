@@ -66,9 +66,7 @@ export default async function LessonPage({
   }
 
   const isCompleted = Boolean(progress?.completed);
-  const canEdit = Boolean(
-    user && (user.id === lesson.author_id || viewerProfile?.role === "admin"),
-  );
+  const canEdit = viewerProfile?.role === "admin";
 
   return (
     <section className="page-shell space-y-6">

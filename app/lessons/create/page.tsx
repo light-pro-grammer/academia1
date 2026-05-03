@@ -1,5 +1,5 @@
 import { CreateLessonForm } from "@/components/lessons/create-lesson-form";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import type { Course, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ type CreateLessonPageProps = {
 export default async function CreateLessonPage({
   searchParams,
 }: CreateLessonPageProps) {
-  const { supabase, profile } = await requireUser();
+  const { supabase } = await requireAdmin();
   const [{ data: subjects, error }, { data: courses }] = await Promise.all([
     supabase.from("subjects").select("*").order("title", { ascending: true }),
     supabase
@@ -54,9 +54,12 @@ export default async function CreateLessonPage({
 
       {subjectList.length > 0 ? (
         <CreateLessonForm
-          adminHint={profile?.role === "admin"}
+          adminHint
           courses={courseList}
+          helperText="Урок буде одразу опубліковано."
+          pendingLabel="Публікуємо..."
           subjects={subjectList}
+          submitLabel="Опублікувати урок"
         />
       ) : (
         <div className="panel p-6 text-sm text-slate-600">

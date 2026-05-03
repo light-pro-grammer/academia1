@@ -1,7 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { updateLessonAction } from "@/app/lessons/[slug]/edit/actions";
 import { CreateLessonForm } from "@/components/lessons/create-lesson-form";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import type { Course, Lesson, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function EditLessonPage({
   params,
   searchParams,
 }: EditLessonPageProps) {
-  const { supabase, user, profile } = await requireUser();
+  const { supabase } = await requireAdmin();
   const [
     { data: lesson, error: lessonError },
     { data: subjects, error: subjectsError },
@@ -41,13 +41,6 @@ export default async function EditLessonPage({
     notFound();
   }
 
-  const isAdmin = profile?.role === "admin";
-  const isAuthor = lesson.author_id === user.id;
-
-  if (!isAdmin && !isAuthor) {
-    redirect("/dashboard?error=Ви не можете редагувати цей урок.");
-  }
-
   const subjectList = (subjects ?? []) as Subject[];
   const courseList = (courses ?? []) as Course[];
 
@@ -61,8 +54,8 @@ export default async function EditLessonPage({
           Оновити навчальний матеріал
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-slate-600">
-          Змініть назву, курс або зміст уроку. Зміни автора повертають урок на
-          модерацію, а зміни адміністратора залишають його затвердженим.
+          Змініть назву, курс або зміст уроку. Після збереження урок залишиться
+          опублікованим.
         </p>
       </div>
 
@@ -80,14 +73,10 @@ export default async function EditLessonPage({
 
       {subjectList.length > 0 ? (
         <CreateLessonForm
-          adminHint={isAdmin}
+          adminHint
           courses={courseList}
           formAction={updateLessonAction}
-          helperText={
-            isAdmin
-              ? "Після збереження урок залишиться затвердженим."
-              : "Після збереження урок повернеться на модерацію."
-          }
+          helperText="Після збереження урок залишиться опублікованим."
           initialLesson={lesson}
           pendingLabel="Зберігаємо..."
           subjects={subjectList}

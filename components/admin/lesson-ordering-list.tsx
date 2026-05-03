@@ -35,6 +35,7 @@ export type ReorderableLesson = {
 export type LessonOrderGroup = {
   courseId: string | null;
   courseTitle: string;
+  orderOffset: number;
   subjectTitle: string;
   lessons: ReorderableLesson[];
 };
@@ -74,7 +75,12 @@ function SortableLessonRow({ lesson }: { lesson: ReorderableLesson }) {
           ⠿
         </button>
         <div className="min-w-0">
-          <h4 className="truncate font-bold text-slate-950">{lesson.title}</h4>
+          <Link
+            className="block truncate font-bold text-slate-950 transition hover:text-emerald-700"
+            href={`/lessons/${lesson.slug}`}
+          >
+            {lesson.title}
+          </Link>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             Порядок: {lesson.order_index}
           </p>
@@ -147,7 +153,7 @@ function LessonOrderGroupCard({ group }: { group: LessonOrderGroup }) {
     const nextLessons = arrayMove(lessons, oldIndex, newIndex).map(
       (lesson, index) => ({
         ...lesson,
-        order_index: index,
+        order_index: group.orderOffset + index,
       }),
     );
 
@@ -157,6 +163,7 @@ function LessonOrderGroupCard({ group }: { group: LessonOrderGroup }) {
       void reorderLessonsAction(
         group.courseId,
         nextLessons.map((lesson) => lesson.id),
+        group.orderOffset,
       )
         .then(() => {
           setMessage("Збережено");

@@ -8,8 +8,9 @@ import {
   FileText,
   Layers3,
 } from "lucide-react";
+import { LessonOrderingList } from "@/components/admin/lesson-ordering-list";
 import { createClient } from "@/lib/supabase/server";
-import type { Course, Lesson, Progress, Subject } from "@/lib/types";
+import type { Course, Lesson, Profile, Progress, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,14 @@ export default async function CoursePage({ params }: CoursePageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: viewerProfile } = user
+    ? await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle<Pick<Profile, "role">>()
+    : { data: null };
+  const isAdmin = viewerProfile?.role === "admin";
 
   const { data: progress } =
     user && approvedLessons.length > 0
@@ -119,7 +128,24 @@ export default async function CoursePage({ params }: CoursePageProps) {
         </div>
       ) : null}
 
-      {approvedLessons.length > 0 ? (
+      {isAdmin && approvedLessons.length > 0 ? (
+        <LessonOrderingList
+          groups={[
+            {
+              courseId: course.id,
+              courseTitle: course.title,
+              orderOffset: 0,
+              subjectTitle: subject.title,
+              lessons: approvedLessons.map((lesson) => ({
+                id: lesson.id,
+                title: lesson.title,
+                slug: lesson.slug,
+                order_index: lesson.order_index,
+              })),
+            },
+          ]}
+        />
+      ) : approvedLessons.length > 0 ? (
         <div className="grid gap-4">
           {approvedLessons.map((lesson) => (
             <Link

@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,6 +61,26 @@ export async function registerAction(formData: FormData) {
       "Акаунт створено. Якщо у Supabase увімкнено підтвердження email, перевірте пошту.",
     )}`,
   );
+}
+
+export async function signInWithGoogleAction() {
+  const headersList = headers();
+  const origin =
+    headersList.get("origin") ??
+    new URL(headersList.get("referer") ?? "http://localhost:3000").origin;
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=/dashboard`,
+    },
+  });
+
+  if (error || !data.url) {
+    redirectWithError("/auth/login", "Не вдалося почати вхід через Google.");
+  }
+
+  redirect(data.url);
 }
 
 export async function logoutAction() {

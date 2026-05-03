@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import type { Lesson } from "@/lib/types";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -44,7 +44,7 @@ export async function updateLessonAction(formData: FormData) {
     fail(lessonSlug, "Заповніть назву, предмет і зміст уроку.");
   }
 
-  const { supabase, user, profile } = await requireUser();
+  const { supabase } = await requireAdmin();
   const { data: lesson } = await supabase
     .from("lessons")
     .select("*")
@@ -53,13 +53,6 @@ export async function updateLessonAction(formData: FormData) {
 
   if (!lesson) {
     fail(lessonSlug, "Урок не знайдено.");
-  }
-
-  const isAdmin = profile?.role === "admin";
-  const isAuthor = lesson.author_id === user.id;
-
-  if (!isAdmin && !isAuthor) {
-    redirect("/dashboard?error=Ви не можете редагувати цей урок.");
   }
 
   if (courseId) {
@@ -88,7 +81,7 @@ export async function updateLessonAction(formData: FormData) {
       subject_id: subjectId,
       course_id: courseId,
       order_index: orderIndex,
-      status: isAdmin ? "approved" : "pending",
+      status: "approved",
       rejection_reason: null,
     })
     .eq("id", lesson.id);
@@ -101,18 +94,21 @@ export async function updateLessonAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath(`/lessons/${lesson.slug}`);
   revalidatePath(`/lessons/${lesson.slug}/edit`);
+  if (courseId) {
+    const { data: course } = await supabase
+      .from("courses")
+      .select("slug, subjects(slug)")
+      .eq("id", courseId)
+      .maybeSingle<{ slug: string; subjects?: { slug?: string | null } | null }>();
 
-  if (isAdmin) {
-    redirect(
-      `/lessons/${lesson.slug}?message=${encodeURIComponent(
-        "Урок оновлено та залишено затвердженим.",
-      )}`,
-    );
+    if (course?.subjects?.slug) {
+      revalidatePath(`/subjects/${course.subjects.slug}/courses/${course.slug}`);
+    }
   }
 
   redirect(
-    `/dashboard?message=${encodeURIComponent(
-      "Урок оновлено і повернуто на модерацію.",
+    `/lessons/${lesson.slug}?message=${encodeURIComponent(
+      "Урок оновлено та залишено опублікованим.",
     )}`,
   );
 }

@@ -1,26 +1,15 @@
-import {
-  Atom,
-  BookOpen,
-  Calculator,
-  Dna,
-  FlaskConical,
-  Globe2,
-  Landmark,
-  Languages,
-  Music,
-} from "lucide-react";
+import { BookOpen } from "lucide-react";
 
-const iconMap = {
-  atom: Atom,
-  book: BookOpen,
-  calculator: Calculator,
-  dna: Dna,
-  flask: FlaskConical,
-  globe: Globe2,
-  landmark: Landmark,
-  languages: Languages,
-  music: Music,
-};
+const emojiIconMap = {
+  atom: "⚛️",
+  calculator: "🧮",
+  dna: "🧬",
+  flask: "🧪",
+  globe: "🌎",
+  landmark: "🏛️",
+  languages: "🗣️",
+  music: "🎵",
+} as const;
 
 type SubjectIconProps = {
   name: string | null;
@@ -28,7 +17,18 @@ type SubjectIconProps = {
 };
 
 export function SubjectIcon({ name, className = "h-5 w-5" }: SubjectIconProps) {
-  const Icon = iconMap[(name ?? "book") as keyof typeof iconMap] ?? BookOpen;
+  const emoji =
+    name?.startsWith("emoji:")
+      ? name.replace("emoji:", "")
+      : emojiIconMap[name as keyof typeof emojiIconMap];
 
-  return <Icon className={className} aria-hidden="true" />;
+  if (emoji) {
+    return (
+      <span className="text-2xl leading-none" aria-hidden="true">
+        {emoji}
+      </span>
+    );
+  }
+
+  return <BookOpen className={className} aria-hidden="true" />;
 }

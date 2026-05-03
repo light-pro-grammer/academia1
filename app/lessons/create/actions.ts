@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/server";
 
@@ -59,21 +60,7 @@ export async function createLessonAction(formData: FormData) {
     fail("Заповніть назву, предмет і зміст уроку.");
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login?message=Увійдіть, щоб створити урок.");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle<{ role: "user" | "admin" }>();
-  const isAdmin = profile?.role === "admin";
+  const { supabase, user } = await requireAdmin();
 
   if (courseId) {
     const { data: course } = await supabase
@@ -99,27 +86,31 @@ export async function createLessonAction(formData: FormData) {
     subject_id: subjectId,
     course_id: courseId,
     author_id: user.id,
-    status: isAdmin ? "approved" : "pending",
+    status: "approved",
     order_index: orderIndex,
   });
 
   if (error) {
-    fail("Не вдалося надіслати урок на модерацію.");
+    fail("Не вдалося опублікувати урок.");
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/admin");
-  if (isAdmin) {
-    redirect(
-      `/lessons/${slug}?message=${encodeURIComponent(
-        "Урок створено та опубліковано.",
-      )}`,
-    );
+  if (courseId) {
+    const { data: course } = await supabase
+      .from("courses")
+      .select("slug, subjects(slug)")
+      .eq("id", courseId)
+      .maybeSingle<{ slug: string; subjects?: { slug?: string | null } | null }>();
+
+    if (course?.subjects?.slug) {
+      revalidatePath(`/subjects/${course.subjects.slug}/courses/${course.slug}`);
+    }
   }
 
   redirect(
-    `/dashboard?message=${encodeURIComponent(
-      "Урок надіслано на модерацію. Після затвердження він стане публічним.",
+    `/lessons/${slug}?message=${encodeURIComponent(
+      "Урок створено та опубліковано.",
     )}`,
   );
 }

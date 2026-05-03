@@ -70,7 +70,9 @@ body {
   }
 
   .markdown-body .youtube-embed {
-    @apply my-6 aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-950;
+    @apply mx-auto my-4 aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-950;
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
   }
 
   .markdown-body .youtube-embed iframe {
@@ -164,6 +166,18 @@ body {
   margin-bottom: 0.15rem;
 }
 
+.markdown-body img {
+  display: block;
+  width: min(100%, 640px) !important;
+  height: auto;
+  max-width: 640px !important;
+  object-fit: contain;
+  margin: 0.75rem auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .markdown-body blockquote {
   border-left: 3px solid #8b5cf6;
   color: #27272a;
@@ -250,6 +264,24 @@ body {
 
 .markdown-body .callout-content li > p {
   margin: 0;
+}
+
+.markdown-body .callout-content img {
+  display: block;
+  width: auto !important;
+  height: auto;
+  max-width: min(100%, 560px) !important;
+  max-height: 420px;
+  object-fit: contain;
+  margin: 0.55rem 0;
+  border-radius: 6px;
+}
+
+.markdown-body .callout-content p:has(> img:only-child) {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .callout-info {

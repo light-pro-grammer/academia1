@@ -1,15 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  GraduationCap,
-  Layers3,
-} from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, Layers3 } from "lucide-react";
 import { SubjectIcon } from "@/components/subject-icon";
 import { createClient } from "@/lib/supabase/server";
-import type { Course, Exam, Lesson, Progress, Subject } from "@/lib/types";
+import type { Course, Lesson, Progress, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,23 +33,11 @@ export default async function SubjectPage({ params }: SubjectPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [
-    { data: courses, error: coursesError },
-    { data: exam },
-  ] = await Promise.all([
-    supabase
-      .from("courses")
-      .select("*, lessons(id, status)")
-      .eq("subject_id", subject.id)
-      .order("order_index", { ascending: true }),
-    supabase
-      .from("exams")
-      .select("*")
-      .eq("subject_id", subject.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<Exam>(),
-  ]);
+  const { data: courses, error: coursesError } = await supabase
+    .from("courses")
+    .select("*, lessons(id, status)")
+    .eq("subject_id", subject.id)
+    .order("order_index", { ascending: true });
 
   const courseList = (courses ?? []) as unknown as CourseWithLessons[];
   const approvedLessonIds = courseList.flatMap((course) =>
@@ -196,33 +178,6 @@ export default async function SubjectPage({ params }: SubjectPageProps) {
           </div>
         )}
       </div>
-
-      {exam ? (
-        <div className="panel p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                <GraduationCap className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-                  Підсумковий іспит
-                </p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950">
-                  {exam.title}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {exam.description}
-                </p>
-              </div>
-            </div>
-            <Link className="btn-primary" href={`/subjects/${subject.slug}/exam`}>
-              Перейти до іспиту
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

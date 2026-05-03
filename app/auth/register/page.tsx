@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { registerAction } from "@/app/auth/actions";
+import { registerAction, signInWithGoogleAction } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 type RegisterPageProps = {
@@ -20,7 +20,7 @@ export default function RegisterPage({ searchParams }: RegisterPageProps) {
             Створіть навчальний акаунт
           </h1>
           <p className="text-sm text-slate-600">
-            Після реєстрації ви зможете надсилати уроки на модерацію.
+            Створіть акаунт, щоб зберігати прогрес і продовжувати навчання з будь-якого пристрою.
           </p>
         </div>
 
@@ -71,6 +71,22 @@ export default function RegisterPage({ searchParams }: RegisterPageProps) {
             />
           </div>
           <SubmitButton label="Зареєструватися" pendingLabel="Створюємо..." />
+        </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            або
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <form action={signInWithGoogleAction}>
+          <SubmitButton
+            label="Зареєструватися через Google"
+            pendingLabel="Переходимо до Google..."
+            variant="secondary"
+          />
         </form>
 
         <p className="mt-5 text-center text-sm text-slate-600">

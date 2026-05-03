@@ -4,11 +4,10 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  GraduationCap,
   PlusCircle,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import type { Exam, ExamAttempt, Lesson, Progress, Subject } from "@/lib/types";
+import type { Lesson, Progress, Subject } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +25,6 @@ type SubmittedLesson = Lesson & {
 type ProgressItem = Progress & {
   lessons?:
     | (Pick<Lesson, "id" | "title" | "slug" | "subject_id"> & {
-        subjects?: Pick<Subject, "title" | "slug"> | null;
-      })
-    | null;
-};
-
-type AttemptItem = ExamAttempt & {
-  exams?:
-    | (Pick<Exam, "title" | "pass_score"> & {
         subjects?: Pick<Subject, "title" | "slug"> | null;
       })
     | null;
@@ -65,7 +56,6 @@ export default async function DashboardPage({
     { data: progressData, error: progressError },
     { data: subjectsData },
     { data: approvedLessonsData },
-    { data: attemptsData, error: attemptsError },
   ] = await Promise.all([
     supabase
       .from("lessons")
@@ -83,11 +73,6 @@ export default async function DashboardPage({
       .from("lessons")
       .select("id, subject_id")
       .eq("status", "approved"),
-    supabase
-      .from("exam_attempts")
-      .select("*, exams(title, pass_score, subjects(title, slug))")
-      .eq("user_id", user.id)
-      .order("completed_at", { ascending: false }),
   ]);
 
   const submittedLessons = (submittedLessonsData ?? []) as SubmittedLesson[];
@@ -97,18 +82,10 @@ export default async function DashboardPage({
     Lesson,
     "id" | "subject_id"
   >[];
-  const attempts = (attemptsData ?? []) as AttemptItem[];
   const completedLessonIds = new Set(
     completedLessons.map((item) => item.lesson_id),
   );
-  const passedAttempts = attempts.filter((attempt) => attempt.passed).length;
-  const averageScore =
-    attempts.length > 0
-      ? Math.round(
-          attempts.reduce((sum, attempt) => sum + attempt.score, 0) /
-            attempts.length,
-        )
-      : 0;
+  const isAdmin = profile?.role === "admin";
 
   const subjectProgress = subjects.map((subject) => {
     const total = approvedLessons.filter(
@@ -134,13 +111,15 @@ export default async function DashboardPage({
             Вітаємо, {profile?.username ?? user.email}
           </h1>
           <p className="text-sm text-slate-600">
-            Тут зібрані ваші уроки, прогрес за предметами та історія іспитів.
+            Тут зібрані ваші уроки та прогрес за предметами.
           </p>
         </div>
-        <Link className="btn-primary" href="/lessons/create">
-          <PlusCircle className="h-4 w-4" aria-hidden="true" />
-          Створити урок
-        </Link>
+        {isAdmin ? (
+          <Link className="btn-primary" href="/lessons/create">
+            <PlusCircle className="h-4 w-4" aria-hidden="true" />
+            Створити урок
+          </Link>
+        ) : null}
       </div>
 
       {searchParams.message ? (
@@ -155,7 +134,7 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="panel p-5">
           <p className="text-sm text-slate-600">Завершено уроків</p>
           <p className="mt-2 text-3xl font-bold text-slate-950">
@@ -166,18 +145,6 @@ export default async function DashboardPage({
           <p className="text-sm text-slate-600">Надіслано уроків</p>
           <p className="mt-2 text-3xl font-bold text-slate-950">
             {submittedLessons.length}
-          </p>
-        </div>
-        <div className="panel p-5">
-          <p className="text-sm text-slate-600">Складено іспитів</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-700">
-            {passedAttempts}
-          </p>
-        </div>
-        <div className="panel p-5">
-          <p className="text-sm text-slate-600">Середній бал</p>
-          <p className="mt-2 text-3xl font-bold text-slate-950">
-            {averageScore}%
           </p>
         </div>
       </div>
@@ -214,107 +181,53 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-950">Мої уроки</h2>
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-slate-950">Мої уроки</h2>
 
-          {lessonsError ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              Не вдалося завантажити уроки: {lessonsError.message}
-            </div>
-          ) : null}
+        {lessonsError ? (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            Не вдалося завантажити уроки: {lessonsError.message}
+          </div>
+        ) : null}
 
-          {submittedLessons.length > 0 ? (
-            <div className="space-y-3">
-              {submittedLessons.map((lesson) => (
-                <article className="panel p-5" key={lesson.id}>
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1">
-                          <FileText className="h-3.5 w-3.5" />
-                          {lesson.subjects?.title ?? "Предмет"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {new Intl.DateTimeFormat("uk-UA").format(
-                            new Date(lesson.created_at),
-                          )}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-950">
-                        {lesson.title}
-                      </h3>
-                      {lesson.status === "rejected" && lesson.rejection_reason ? (
-                        <p className="mt-2 text-sm text-rose-700">
-                          Причина: {lesson.rejection_reason}
-                        </p>
-                      ) : null}
+        {submittedLessons.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {submittedLessons.map((lesson) => (
+              <article className="panel p-5" key={lesson.id}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <FileText className="h-3.5 w-3.5" />
+                        {lesson.subjects?.title ?? "Предмет"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {new Intl.DateTimeFormat("uk-UA").format(
+                          new Date(lesson.created_at),
+                        )}
+                      </span>
                     </div>
-                    <StatusBadge status={lesson.status} />
+                    <h3 className="text-lg font-bold text-slate-950">
+                      {lesson.title}
+                    </h3>
+                    {lesson.status === "rejected" && lesson.rejection_reason ? (
+                      <p className="mt-2 text-sm text-rose-700">
+                        Причина: {lesson.rejection_reason}
+                      </p>
+                    ) : null}
                   </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="panel p-6 text-sm text-slate-600">
-              Ви ще не створили жодного уроку.
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-950">Історія іспитів</h2>
-
-          {attemptsError ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              Не вдалося завантажити спроби: {attemptsError.message}
-            </div>
-          ) : null}
-
-          {attempts.length > 0 ? (
-            <div className="space-y-3">
-              {attempts.map((attempt) => (
-                <Link
-                  className="panel block p-5 transition hover:border-emerald-300 hover:shadow-md"
-                  href={`/subjects/${attempt.exams?.subjects?.slug ?? ""}/exam?attempt=${attempt.id}`}
-                  key={attempt.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <GraduationCap className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
-                      <div>
-                        <h3 className="font-bold text-slate-950">
-                          {attempt.exams?.title ?? "Іспит"}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {attempt.exams?.subjects?.title ?? "Предмет"} ·{" "}
-                          {new Intl.DateTimeFormat("uk-UA").format(
-                            new Date(attempt.completed_at),
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`status-pill ${
-                        attempt.passed
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-rose-100 text-rose-800"
-                      }`}
-                    >
-                      {attempt.score}%
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="panel p-6 text-sm text-slate-600">
-              Спроби іспитів з&apos;являться тут після проходження.
-            </div>
-          )}
-        </section>
-      </div>
+                  <StatusBadge status={lesson.status} />
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="panel p-6 text-sm text-slate-600">
+            Ви ще не створили жодного уроку.
+          </div>
+        )}
+      </section>
 
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-slate-950">Завершені уроки</h2>

@@ -62,11 +62,11 @@ export function CreateLessonForm({
   adminHint = false,
   courses,
   formAction = createLessonAction,
-  helperText = 'Нові уроки отримують статус "на модерації".',
+  helperText = "Урок буде опубліковано одразу.",
   initialLesson,
-  pendingLabel = "Надсилаємо...",
+  pendingLabel = "Публікуємо...",
   subjects,
-  submitLabel = "Надіслати урок",
+  submitLabel = "Опублікувати урок",
 }: CreateLessonFormProps) {
   const initialContent = initialLesson?.content ?? starterContent;
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -181,6 +181,47 @@ export function CreateLessonForm({
       .run();
   }
 
+  function isCursorInsideBlockquoteMarkdown() {
+    if (!editor) {
+      return false;
+    }
+
+    if (editor.isActive("blockquote")) {
+      return true;
+    }
+
+    const textBeforeCursor = editor.state.doc.textBetween(
+      0,
+      editor.state.selection.from,
+      "\n",
+      "\n",
+    );
+    const lines = textBeforeCursor.split(/\r?\n/);
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const line = lines[index]?.trimEnd() ?? "";
+
+      if (line.trim() === "") {
+        continue;
+      }
+
+      return line.trimStart().startsWith(">");
+    }
+
+    return false;
+  }
+
+  function formatImageMarkdown(altText: string, publicUrl: string) {
+    const escapedAltText = altText.replace(/[\\[\]]/g, "\\$&");
+    const imageMarkdown = `![${escapedAltText}](${publicUrl})`;
+
+    if (isCursorInsideBlockquoteMarkdown()) {
+      return `\n> ${imageMarkdown}\n>\n`;
+    }
+
+    return `\n${imageMarkdown}\n`;
+  }
+
   function getSafeImageName(fileName: string) {
     const extension = fileName.split(".").pop()?.toLowerCase() ?? "jpg";
     const baseName = fileName
@@ -242,7 +283,7 @@ export function CreateLessonForm({
         file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() ||
         "Зображення";
 
-      insertMarkdown(`\n![${altText}](${data.publicUrl})\n`);
+      insertMarkdown(formatImageMarkdown(altText, data.publicUrl));
     } catch (error) {
       setImageUploadError(
         error instanceof Error
