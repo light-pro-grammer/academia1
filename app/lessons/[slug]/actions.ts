@@ -83,6 +83,55 @@ export async function createLessonExerciseAction(formData: FormData) {
   lessonRedirect(lessonSlug, "Вправу додано.");
 }
 
+export async function updateLessonExerciseAction(formData: FormData) {
+  const exerciseId = getString(formData, "exercise_id");
+  const lessonSlug = getString(formData, "lesson_slug");
+  const title = getString(formData, "title");
+  const prompt = getString(formData, "prompt");
+  const rawKeywords = getString(formData, "required_keywords");
+  const explanation = getString(formData, "explanation");
+
+  if (!exerciseId || !lessonSlug) {
+    redirect("/");
+  }
+
+  if (!title || !prompt || !rawKeywords) {
+    lessonRedirect(
+      lessonSlug,
+      "Заповніть назву, завдання і ключові відповіді.",
+      "error",
+    );
+  }
+
+  const requiredKeywords = parseKeywordGroups(rawKeywords);
+
+  if (requiredKeywords.length === 0) {
+    lessonRedirect(
+      lessonSlug,
+      "Додайте хоча б один обов'язковий ключ відповіді.",
+      "error",
+    );
+  }
+
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("lesson_exercises")
+    .update({
+      title,
+      prompt,
+      required_keywords: requiredKeywords,
+      explanation: explanation || null,
+    })
+    .eq("id", exerciseId);
+
+  if (error) {
+    lessonRedirect(lessonSlug, "Не вдалося оновити вправу.", "error");
+  }
+
+  revalidatePath(`/lessons/${lessonSlug}`);
+  lessonRedirect(lessonSlug, "Вправу оновлено.");
+}
+
 export async function deleteLessonExerciseAction(formData: FormData) {
   const exerciseId = getString(formData, "exercise_id");
   const lessonSlug = getString(formData, "lesson_slug");

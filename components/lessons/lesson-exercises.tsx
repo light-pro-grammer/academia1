@@ -7,13 +7,16 @@ import {
   CheckCircle2,
   CircleAlert,
   ClipboardCheck,
+  Pencil,
   RotateCcw,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   createLessonExerciseAction,
   deleteLessonExerciseAction,
   submitLessonExercisesAction,
+  updateLessonExerciseAction,
 } from "@/app/lessons/[slug]/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 import type {
@@ -46,6 +49,10 @@ function formatKeywordGroups(groups: string[][]) {
     .map((group) => group.join(" / "))
     .filter(Boolean)
     .join(", ");
+}
+
+function formatKeywordGroupsForTextarea(groups: string[][]) {
+  return groups.map((group) => group.join(" | ")).join("\n");
 }
 
 function AddExerciseForm({
@@ -128,6 +135,142 @@ function AddExerciseForm({
         </div>
       </form>
     </details>
+  );
+}
+
+function ExerciseManagementItem({
+  exercise,
+  index,
+  lessonSlug,
+}: {
+  exercise: LessonExercise;
+  index: number;
+  lessonSlug: string;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (isEditing) {
+    return (
+      <div className="rounded-lg border border-emerald-200 bg-white p-3">
+        <form action={updateLessonExerciseAction} className="space-y-4">
+          <input name="exercise_id" type="hidden" value={exercise.id} />
+          <input name="lesson_slug" type="hidden" value={lessonSlug} />
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h4 className="text-sm font-bold text-slate-950">
+              Редагування вправи {index + 1}
+            </h4>
+            <button
+              className="btn-secondary h-9 px-3"
+              onClick={() => setIsEditing(false)}
+              type="button"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+              Скасувати
+            </button>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <label className="field-label" htmlFor={`edit-title-${exercise.id}`}>
+                Назва вправи
+              </label>
+              <input
+                className="field-input"
+                defaultValue={exercise.title}
+                id={`edit-title-${exercise.id}`}
+                name="title"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                className="field-label"
+                htmlFor={`edit-keywords-${exercise.id}`}
+              >
+                Ключові відповіді
+              </label>
+              <textarea
+                className="field-input min-h-28"
+                defaultValue={formatKeywordGroupsForTextarea(
+                  exercise.required_keywords,
+                )}
+                id={`edit-keywords-${exercise.id}`}
+                name="required_keywords"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="field-label" htmlFor={`edit-prompt-${exercise.id}`}>
+              Текст завдання
+            </label>
+            <textarea
+              className="field-input min-h-32"
+              defaultValue={exercise.prompt}
+              id={`edit-prompt-${exercise.id}`}
+              name="prompt"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              className="field-label"
+              htmlFor={`edit-explanation-${exercise.id}`}
+            >
+              Пояснення після перевірки
+            </label>
+            <textarea
+              className="field-input min-h-24"
+              defaultValue={exercise.explanation ?? ""}
+              id={`edit-explanation-${exercise.id}`}
+              name="explanation"
+            />
+          </div>
+
+          <div className="max-w-xs">
+            <SubmitButton
+              label="Зберегти зміни"
+              pendingLabel="Зберігаємо..."
+            />
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-bold text-slate-950">
+          {index + 1}. {exercise.title}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Ключі: {formatKeywordGroups(exercise.required_keywords)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          className="btn-secondary h-9 px-3"
+          onClick={() => setIsEditing(true)}
+          type="button"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+          Редагувати
+        </button>
+        <form action={deleteLessonExerciseAction}>
+          <input name="exercise_id" type="hidden" value={exercise.id} />
+          <input name="lesson_slug" type="hidden" value={lessonSlug} />
+          <button className="btn-danger h-9 px-3" type="submit">
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Видалити
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -334,7 +477,11 @@ export function LessonExercises({
 
       {canManageExercises ? (
         <div className="mb-5 space-y-3">
-          <AddExerciseForm lessonId={lessonId} lessonSlug={lessonSlug} />
+          <AddExerciseForm
+            key={`add-${exercises.length}-${exercises.at(-1)?.id ?? "empty"}`}
+            lessonId={lessonId}
+            lessonSlug={lessonSlug}
+          />
 
           {exercises.length > 0 ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -343,27 +490,12 @@ export function LessonExercises({
               </h3>
               <div className="space-y-2">
                 {exercises.map((exercise, index) => (
-                  <div
-                    className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                  <ExerciseManagementItem
+                    exercise={exercise}
+                    index={index}
                     key={exercise.id}
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-slate-950">
-                        {index + 1}. {exercise.title}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Ключі: {formatKeywordGroups(exercise.required_keywords)}
-                      </p>
-                    </div>
-                    <form action={deleteLessonExerciseAction}>
-                      <input name="exercise_id" type="hidden" value={exercise.id} />
-                      <input name="lesson_slug" type="hidden" value={lessonSlug} />
-                      <button className="btn-danger h-9 px-3" type="submit">
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        Видалити
-                      </button>
-                    </form>
-                  </div>
+                    lessonSlug={lessonSlug}
+                  />
                 ))}
               </div>
             </div>
