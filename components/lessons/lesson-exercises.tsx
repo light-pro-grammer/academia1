@@ -263,21 +263,14 @@ function ExerciseAttemptForm({
 
               {result ? (
                 <div className="mt-4 space-y-2 rounded-lg bg-white/80 p-3 text-sm text-slate-700">
-                  {result.missingKeywords.length > 0 ? (
-                    <p className="text-rose-800">
-                      Не знайдено: {result.missingKeywords.join(", ")}
-                    </p>
-                  ) : null}
-                  <p>
-                    <span className="font-semibold">Очікувані ключі:</span>{" "}
-                    {formatKeywordGroups(exercise.required_keywords)}
-                  </p>
                   {exercise.explanation ? (
                     <p className="whitespace-pre-wrap">
                       <span className="font-semibold">Пояснення:</span>{" "}
                       {exercise.explanation}
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="text-slate-600">Пояснення не додано.</p>
+                  )}
                 </div>
               ) : null}
             </article>

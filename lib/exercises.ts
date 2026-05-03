@@ -108,32 +108,73 @@ function findKeywordRange(
   return null;
 }
 
+function getNumberTokens(value: string) {
+  return value.match(/\d+/g) ?? [];
+}
+
 export function checkKeywordAnswer(
   answer: string,
   requiredKeywords: KeywordGroups,
 ): ExerciseCheckResult {
   const answerTokens = normalizeKeywordText(answer).split(" ").filter(Boolean);
+  const answerNumberTokens = getNumberTokens(answer);
   const usedTokenIndexes = new Set<number>();
+  const usedNumberTokenIndexes = new Set<number>();
   const missingKeywords: string[] = [];
 
   requiredKeywords.forEach((alternatives) => {
-    const matchedRange = alternatives
-      .map((keyword) =>
-        findKeywordRange(
-          answerTokens,
-          normalizeKeywordText(cleanKeyword(keyword)).split(" ").filter(Boolean),
-          usedTokenIndexes,
-        ),
-      )
-      .find(Boolean);
+    let matchedRange: ReturnType<typeof findKeywordRange> = null;
+    let matchedNumberRange: ReturnType<typeof findKeywordRange> = null;
 
-    if (!matchedRange) {
+    for (const keyword of alternatives) {
+      const cleanedKeyword = cleanKeyword(keyword);
+      const keywordTokens = normalizeKeywordText(cleanedKeyword)
+        .split(" ")
+        .filter(Boolean);
+      matchedRange = findKeywordRange(
+        answerTokens,
+        keywordTokens,
+        usedTokenIndexes,
+      );
+
+      if (matchedRange) {
+        break;
+      }
+
+      const keywordNumberTokens = getNumberTokens(cleanedKeyword);
+
+      if (keywordNumberTokens.length > 0) {
+        matchedNumberRange = findKeywordRange(
+          answerNumberTokens,
+          keywordNumberTokens,
+          usedNumberTokenIndexes,
+        );
+      }
+
+      if (matchedNumberRange) {
+        break;
+      }
+    }
+
+    if (!matchedRange && !matchedNumberRange) {
       missingKeywords.push(alternatives.map(cleanKeyword).join(" / "));
       return;
     }
 
-    for (let index = matchedRange.start; index < matchedRange.end; index += 1) {
-      usedTokenIndexes.add(index);
+    if (matchedRange) {
+      for (let index = matchedRange.start; index < matchedRange.end; index += 1) {
+        usedTokenIndexes.add(index);
+      }
+    }
+
+    if (matchedNumberRange) {
+      for (
+        let index = matchedNumberRange.start;
+        index < matchedNumberRange.end;
+        index += 1
+      ) {
+        usedNumberTokenIndexes.add(index);
+      }
     }
   });
 
