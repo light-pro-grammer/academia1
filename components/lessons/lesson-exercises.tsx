@@ -244,14 +244,21 @@ function ExerciseAttemptForm({
                 >
                   Ваша відповідь
                 </label>
-                <textarea
-                  className="field-input min-h-28"
-                  defaultValue={result?.answer ?? ""}
-                  disabled={hasSubmitted}
-                  id={`exercise-answer-${exercise.id}`}
-                  name={`answer_${exercise.id}`}
-                  placeholder="Введіть відповідь. Наприклад: 140, 67, 165..."
-                />
+                {hasSubmitted ? (
+                  <textarea
+                    className="field-input min-h-28 bg-slate-50"
+                    id={`exercise-answer-${exercise.id}`}
+                    readOnly
+                    value={result?.answer ?? ""}
+                  />
+                ) : (
+                  <textarea
+                    className="field-input min-h-28"
+                    id={`exercise-answer-${exercise.id}`}
+                    name={`answer_${exercise.id}`}
+                    placeholder="Введіть відповідь. Наприклад: 140, 67, 165..."
+                  />
+                )}
               </div>
 
               {result ? (

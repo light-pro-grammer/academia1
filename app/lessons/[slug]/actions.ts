@@ -248,7 +248,6 @@ export async function submitLessonExercisesAction(
     }
   }
 
-  revalidatePath(`/lessons/${lessonSlug}`);
   revalidatePath("/dashboard");
 
   return {
