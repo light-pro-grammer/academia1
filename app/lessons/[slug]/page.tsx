@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Clock, LogIn, Pencil, UserRound } from "lucide-react";
-import { markLessonCompletedAction } from "@/app/lessons/[slug]/actions";
+import { CheckCircle2, LogIn, Pencil } from "lucide-react";
+import { LessonExercises } from "@/components/lessons/lesson-exercises";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { coerceKeywordGroups, type LessonExercise } from "@/lib/exercises";
 import { createClient } from "@/lib/supabase/server";
 import type { Lesson, Profile, Progress, Subject } from "@/lib/types";
 
@@ -20,7 +21,6 @@ type LessonPageProps = {
 
 type LessonDetails = Lesson & {
   subjects?: Pick<Subject, "title" | "slug"> | null;
-  profiles?: Pick<Profile, "username"> | null;
 };
 
 export default async function LessonPage({
@@ -30,7 +30,7 @@ export default async function LessonPage({
   const supabase = createClient();
   const { data: lesson, error } = await supabase
     .from("lessons")
-    .select("*, subjects(title, slug), profiles(username)")
+    .select("*, subjects(title, slug)")
     .eq("slug", params.slug)
     .eq("status", "approved")
     .maybeSingle<LessonDetails>();
@@ -67,6 +67,18 @@ export default async function LessonPage({
 
   const isCompleted = Boolean(progress?.completed);
   const canEdit = viewerProfile?.role === "admin";
+  const { data: exerciseData, error: exercisesError } = await supabase
+    .from("lesson_exercises")
+    .select("*")
+    .eq("lesson_id", lesson.id)
+    .order("order_index", { ascending: true })
+    .order("created_at", { ascending: true });
+  const exercises = exercisesError
+    ? []
+    : ((exerciseData ?? []) as LessonExercise[]).map((exercise) => ({
+        ...exercise,
+        required_keywords: coerceKeywordGroups(exercise.required_keywords),
+      }));
 
   return (
     <section className="page-shell space-y-6">
@@ -82,18 +94,6 @@ export default async function LessonPage({
             <h1 className="max-w-4xl text-3xl font-bold text-slate-950 sm:text-4xl">
               {lesson.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-              <span className="inline-flex items-center gap-1.5">
-                <UserRound className="h-4 w-4" aria-hidden="true" />
-                {lesson.profiles?.username ?? "Автор"}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-4 w-4" aria-hidden="true" />
-                {new Intl.DateTimeFormat("uk-UA").format(
-                  new Date(lesson.created_at),
-                )}
-              </span>
-            </div>
           </div>
 
           <div className="w-full space-y-3 lg:w-64">
@@ -113,15 +113,14 @@ export default async function LessonPage({
                   <CheckCircle2 className="mr-2 inline h-4 w-4" />
                   Урок завершено
                 </div>
+              ) : exercises.length > 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                  Пройдіть вправи мінімум на 70%, щоб завершити урок.
+                </div>
               ) : (
-                <form action={markLessonCompletedAction}>
-                  <input name="lesson_id" type="hidden" value={lesson.id} />
-                  <input name="lesson_slug" type="hidden" value={lesson.slug} />
-                  <button className="btn-primary w-full" type="submit">
-                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    Позначити завершеним
-                  </button>
-                </form>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Вправи ще не додані.
+                </div>
               )
             ) : (
               <Link className="btn-secondary w-full" href="/auth/login">
@@ -148,6 +147,20 @@ export default async function LessonPage({
       <div className="panel p-5 sm:p-8">
         <MarkdownRenderer content={lesson.content} />
       </div>
+
+      <LessonExercises
+        canManageExercises={canEdit}
+        exercises={exercises}
+        isCompleted={isCompleted}
+        isLoggedIn={Boolean(user)}
+        lessonId={lesson.id}
+        lessonSlug={lesson.slug}
+        loadError={
+          exercisesError
+            ? "Не вдалося завантажити вправи. Перевірте, чи виконана SQL-міграція для інтерактивних вправ."
+            : undefined
+        }
+      />
     </section>
   );
 }

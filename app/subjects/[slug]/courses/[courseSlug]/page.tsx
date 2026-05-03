@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  Clock,
   FileText,
   Layers3,
 } from "lucide-react";
@@ -147,7 +146,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
         />
       ) : approvedLessons.length > 0 ? (
         <div className="grid gap-4">
-          {approvedLessons.map((lesson) => (
+          {approvedLessons.map((lesson, index) => (
             <Link
               className="panel group p-5 transition hover:border-emerald-300 hover:shadow-md"
               href={`/lessons/${lesson.slug}`}
@@ -156,15 +155,9 @@ export default async function CoursePage({ params }: CoursePageProps) {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
                       <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                      Урок
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                      {new Intl.DateTimeFormat("uk-UA").format(
-                        new Date(lesson.created_at),
-                      )}
+                      Урок {index + 1}
                     </span>
                   </div>
                   <h3 className="text-lg font-bold text-slate-950">

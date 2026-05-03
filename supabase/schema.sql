@@ -61,6 +61,27 @@ create table if not exists public.progress (
   unique (user_id, lesson_id)
 );
 
+create table if not exists public.lesson_exercises (
+  id uuid primary key default gen_random_uuid(),
+  lesson_id uuid not null references public.lessons(id) on delete cascade,
+  title text not null,
+  prompt text not null,
+  required_keywords jsonb not null default '[]'::jsonb,
+  explanation text,
+  order_index integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.lesson_exercise_attempts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  lesson_id uuid not null references public.lessons(id) on delete cascade,
+  score integer not null check (score >= 0 and score <= 100),
+  passed boolean not null default false,
+  answers jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists subjects_slug_idx on public.subjects(slug);
 create index if not exists courses_slug_idx on public.courses(slug);
 create index if not exists courses_subject_order_idx on public.courses(subject_id, order_index);
@@ -70,6 +91,8 @@ create index if not exists lessons_course_status_idx on public.lessons(course_id
 create index if not exists lessons_course_order_idx on public.lessons(course_id, order_index);
 create index if not exists lessons_author_idx on public.lessons(author_id);
 create index if not exists progress_user_idx on public.progress(user_id);
+create index if not exists lesson_exercises_lesson_order_idx on public.lesson_exercises(lesson_id, order_index);
+create index if not exists lesson_exercise_attempts_user_lesson_idx on public.lesson_exercise_attempts(user_id, lesson_id, created_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -130,6 +153,8 @@ alter table public.subjects enable row level security;
 alter table public.courses enable row level security;
 alter table public.lessons enable row level security;
 alter table public.progress enable row level security;
+alter table public.lesson_exercises enable row level security;
+alter table public.lesson_exercise_attempts enable row level security;
 
 drop policy if exists "Profiles are readable by everyone" on public.profiles;
 create policy "Profiles are readable by everyone"
@@ -220,6 +245,30 @@ create policy "Users can update own progress"
 on public.progress for update
 to authenticated
 using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Lesson exercises are readable by everyone" on public.lesson_exercises;
+create policy "Lesson exercises are readable by everyone"
+on public.lesson_exercises for select
+using (true);
+
+drop policy if exists "Admins can manage lesson exercises" on public.lesson_exercises;
+create policy "Admins can manage lesson exercises"
+on public.lesson_exercises for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "Users can read own lesson exercise attempts" on public.lesson_exercise_attempts;
+create policy "Users can read own lesson exercise attempts"
+on public.lesson_exercise_attempts for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can create own lesson exercise attempts" on public.lesson_exercise_attempts;
+create policy "Users can create own lesson exercise attempts"
+on public.lesson_exercise_attempts for insert
+to authenticated
 with check (auth.uid() = user_id);
 
 insert into public.subjects (title, slug, description, icon)

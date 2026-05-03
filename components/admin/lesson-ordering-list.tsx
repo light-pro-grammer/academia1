@@ -40,7 +40,13 @@ export type LessonOrderGroup = {
   lessons: ReorderableLesson[];
 };
 
-function SortableLessonRow({ lesson }: { lesson: ReorderableLesson }) {
+function SortableLessonRow({
+  lesson,
+  lessonNumber,
+}: {
+  lesson: ReorderableLesson;
+  lessonNumber: number;
+}) {
   const {
     attributes,
     listeners,
@@ -81,9 +87,9 @@ function SortableLessonRow({ lesson }: { lesson: ReorderableLesson }) {
           >
             {lesson.title}
           </Link>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            Порядок: {lesson.order_index}
-          </p>
+          <span className="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+            Урок {lessonNumber}
+          </span>
         </div>
       </div>
 
@@ -205,8 +211,12 @@ function LessonOrderGroupCard({ group }: { group: LessonOrderGroup }) {
         >
           <SortableContext items={lessonIds} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
-              {lessons.map((lesson) => (
-                <SortableLessonRow key={lesson.id} lesson={lesson} />
+              {lessons.map((lesson, index) => (
+                <SortableLessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  lessonNumber={group.orderOffset + index + 1}
+                />
               ))}
             </div>
           </SortableContext>
